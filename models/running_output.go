@@ -48,8 +48,9 @@ type OutputConfig struct {
 // RunningOutput contains the output configuration
 type RunningOutput struct {
 	// Must be 64-bit aligned
-	droppedMetrics atomic.Int64
-	writeInFlight  atomic.Bool
+	droppedMetrics  atomic.Int64
+	writeInFlight   atomic.Bool
+	lastWriteFailed atomic.Bool
 
 	Output            telegraf.Output
 	Config            *OutputConfig
@@ -72,7 +73,10 @@ type RunningOutput struct {
 }
 
 func NewRunningOutput(output telegraf.Output, config *OutputConfig, batchSize, bufferLimit int) *RunningOutput {
-	tags := map[string]string{"output": config.Name}
+	tags := map[string]string{
+		"output": config.Name,
+		"_id":    config.ID,
+	}
 	if config.Alias != "" {
 		tags["alias"] = config.Alias
 	}
@@ -86,6 +90,7 @@ func NewRunningOutput(output telegraf.Output, config *OutputConfig, batchSize, b
 		logger.Error(err)
 	}
 	SetLoggerOnPlugin(output, logger)
+	SetStatisticsOnPlugin(output, logger, tags)
 
 	if config.MetricBufferLimit > 0 {
 		bufferLimit = config.MetricBufferLimit
@@ -270,7 +275,7 @@ func (r *RunningOutput) triggerBatchCheck() {
 	// metrics than the batch-size in the buffer. We guard this trigger to not
 	// be issued if a write is already ongoing to avoid event storms when adding
 	// new metrics during write.
-	if r.buffer.Len() >= r.MetricBatchSize {
+	if r.buffer.Len() >= r.MetricBatchSize && !r.lastWriteFailed.Load() {
 		// Please note: We cannot merge this if into the one above because then
 		// the compare-and-swap condition would always be evaluated and the
 		// swap happens unconditionally from the buffer fullness.
@@ -384,9 +389,10 @@ func (r *RunningOutput) writeMetrics(metrics []telegraf.Metric) error {
 	return err
 }
 
-func (*RunningOutput) updateTransaction(tx *Transaction, err error) {
+func (r *RunningOutput) updateTransaction(tx *Transaction, err error) {
 	// No error indicates all metrics were written successfully
 	if err == nil {
+		r.lastWriteFailed.Store(false)
 		tx.AcceptAll()
 		return
 	}
@@ -395,11 +401,15 @@ func (*RunningOutput) updateTransaction(tx *Transaction, err error) {
 	// successfully and we should keep them for the next write cycle
 	var writeErr *internal.PartialWriteError
 	if !errors.As(err, &writeErr) {
+		r.lastWriteFailed.Store(true)
 		tx.KeepAll()
 		return
 	}
 
-	// Transfer the accepted and rejected indices based on the write error values
+	// Transfer the accepted and rejected indices based on the write error
+	// values. Only allow to retrigger before the flush interval if at least
+	// one metric was accepted in order to avoid
+	r.lastWriteFailed.Store(len(writeErr.MetricsAccept) == 0)
 	tx.Accept = writeErr.MetricsAccept
 	tx.Reject = writeErr.MetricsReject
 }

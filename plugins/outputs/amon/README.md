@@ -1,14 +1,16 @@
 # Amon Output Plugin
 
 This plugin writes metrics to [Amon monitoring platform][amon]. It requires a
-`serverkey` and `amoninstance` URL which can be obtained [here][amon_monitoring]
-for your account.
+`serverkey` and `amoninstance` URL which can be obtained from the
+[website][amon_monitoring] for your account.
 
 > [!IMPORTANT]
 > If point values being sent cannot be converted to a `float64`, the metric is
 > skipped.
 
 ⭐ Telegraf v0.2.1
+🚩 Telegraf v1.37.0
+🔥 Telegraf v1.40.0
 🏷️ datastore
 💻 all
 
