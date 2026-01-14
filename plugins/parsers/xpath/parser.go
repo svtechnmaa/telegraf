@@ -149,6 +149,18 @@ func (p *Parser) Init() error {
 
 	return nil
 }
+func extractJunosSensorsFromGlue(glue string) []string {
+	var out []string
+	parts := strings.Split(glue, ":")
+
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if strings.HasPrefix(p, "/") && strings.HasSuffix(p, "/") {
+			out = append(out, strings.TrimSuffix(p, "/"))
+		}
+	}
+	return out
+}
 
 func (p *Parser) Parse(buf []byte) ([]telegraf.Metric, error) {
 	t := time.Now()
@@ -183,20 +195,16 @@ func (p *Parser) Parse(buf []byte) ([]telegraf.Metric, error) {
 			}
 			sensor := m.Tags()
 			rawSensor := sensor["sensor"]
-			parts := strings.SplitN(rawSensor, ":", 2)
+			detected := extractJunosSensorsFromGlue(rawSensor)
+			cfgSensor := strings.TrimSuffix(p.Configs[i].SensorName, "/")
 
-			var streamSensor string
-			if len(parts) == 2 {
-				streamSensor = parts[1]
-			} else {
-				streamSensor = rawSensor
-			}
-
-			p.Log.Debugf("SensorName of Streams is : %s", streamSensor)
-			p.Log.Debugf("SensorName of Configs is : %s", p.Configs[i].SensorName)
-
-			if p.Configs[i].SensorName == streamSensor {
-				metrics = append(metrics, m)
+			p.Log.Debugf("SensorName of Streams is : %s", detected)
+			p.Log.Debugf("SensorName of Configs is : %s", cfgSensor)
+			for _, s := range detected {
+				if s == cfgSensor {
+					metrics = append(metrics, m)
+					break
+				}
 			}
 		}
 	}
