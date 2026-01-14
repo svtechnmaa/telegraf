@@ -182,9 +182,20 @@ func (p *Parser) Parse(buf []byte) ([]telegraf.Metric, error) {
 				return metrics, err
 			}
 			sensor := m.Tags()
-			p.Log.Debugf("SensorName of Streams is : %s", strings.Split(sensor["sensor"], ":")[1])
+			rawSensor := sensor["sensor"]
+			parts := strings.SplitN(rawSensor, ":", 2)
+
+			var streamSensor string
+			if len(parts) == 2 {
+				streamSensor = parts[1]
+			} else {
+				streamSensor = rawSensor
+			}
+
+			p.Log.Debugf("SensorName of Streams is : %s", streamSensor)
 			p.Log.Debugf("SensorName of Configs is : %s", p.Configs[i].SensorName)
-			if p.Configs[i].SensorName == (strings.Split(sensor["sensor"], ":")[1]) {
+
+			if p.Configs[i].SensorName == streamSensor {
 				metrics = append(metrics, m)
 			}
 		}
