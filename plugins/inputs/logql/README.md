@@ -13,10 +13,9 @@ This plugin gathers metrics from a [Loki][loki] endpoint using
 
 ## Global configuration options <!-- @/docs/includes/plugin_config.md -->
 
-In addition to the plugin-specific configuration settings, plugins support
-additional global and plugin configuration settings. These settings are used to
-modify metrics, tags, and field or create aliases and configure ordering, etc.
-See the [CONFIGURATION.md][CONFIGURATION.md] for more details.
+Plugins support additional global and plugin configuration settings for tasks
+such as modifying metrics, tags, and fields, creating aliases, and configuring
+plugin ordering. See [CONFIGURATION.md][CONFIGURATION.md] for more details.
 
 [CONFIGURATION.md]: ../../../docs/CONFIGURATION.md#plugins
 
@@ -140,8 +139,8 @@ returned results.
 
 Vector and metric results will produce one or more metrics with the metric named
 being either `logql` or the `name` specified in the query.
-Labels of the results will be kept as tags if they are not internal i.e. they
-are not starting and ending with a double underscore (`__<label>__`).
+Labels of the results will be kept as tags if they are not internal (not
+starting and ending with a double underscore `__<label>__`).
 The returned value for each sample will be stored in a field called `value` and
 the provided Loki timestamp will be used as metric timestamp.
 
@@ -149,8 +148,8 @@ the provided Loki timestamp will be used as metric timestamp.
 
 A stream result will produce one or more metrics with the metric named being
 either `logql` or the `name` specified in the query.
-Labels of the results will be kept as tags if they are not internal i.e. they
-are not starting and ending with a double underscore (`__<label>__`).
+Labels of the results will be kept as tags if they are not internal (not
+starting and ending with a double underscore `__<label>__`).
 The returned log-line for each sample will be stored in a field called `message`
 and the provided Loki timestamp will be used as metric timestamp.
 
@@ -197,13 +196,13 @@ logql,detected_level=unknown,host=Hugin value=1 1762943400000000000
 logql,detected_level=unknown,host=Hugin value=1 1762943460000000000
 ```
 
-When quering raw log entries (i.e. stream results) e.g. via
+When querying raw log entries (stream results), for example:
 
 ```logql
 {job="varlogs", filename="/var/log/Xorg.0.log"}
 ```
 
-with sorting forward and limiting the number of returned values to 5 you get
+with `sorting = "forward"` and `limit = 5`, the plugin returns the following:
 
 ```text
 logql,detected_level=unknown,filename=/var/log/Xorg.0.log,host=Hugin,job=varlogs,service_name=varlogs message="[     6.806] (--) Log file renamed from \"/var/log/Xorg.pid-693.log\" to \"/var/log/Xorg.0.log\"" 1762943173000000000
